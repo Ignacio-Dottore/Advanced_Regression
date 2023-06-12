@@ -47,7 +47,8 @@ library(MVN) #Para test de Henze-Zirkler
 library(aod) #Para test de wald
 library(nortest) # Para test de Shapiro y demas 
 library(lmtest)
-
+library(car)
+setwd("C:/Users/idott/Advanced_Regression/Advanced_Regression/TP 1")
 
 
 
@@ -550,7 +551,9 @@ plot(resid(modelo3))
 
 # Grafico de residuos vs valores ajustados: permite verificar si hay patron en los residuos
 plot(modelo3$fitted.values, modelo3$residuals, xlab = "Valores ajustados", ylab = "Residuos")
-# Interpretacion: 
+# Interpretacion: Se visualiza un cluster de puntos en la linea 0 hacia la derecha, esto podria indicar un problema en el modelo.
+# Esto podria sugerir que el modelo esta subestimando los valores observados en esa region. Podria haber una falta de ajuste en esa region de los datos.
+# Lo que indica que el modelo no puede explicar adecuadamente la variabilidad en esa area.
 
 # QQ-plot
 qqnorm(modelo3$residuals)
@@ -563,14 +566,70 @@ plot(density(residuos3),main = "Distribution of Residuals", xlab = "Residuals")
 
 # Plot de Residuos vs leverage
 plot(modelo3,which=5) #which=5 indica que se desea graficar residuos vs leverage
+# Interpretacion: Este grafico se usa para identificar obs atipicas o influentes de un modelo de regresion.
+# El leverage se referiere a la influencia relativa que tiene una observacion sobre la estimacion de los coeficientes del modelo.
+# Las obs con un alto leverage tienen un impacto mayor en la estimacion de los coeficientes y lo por tanto pueden afectar significativamente
+# los resultados del modelo. En general, se considera que una observación es influente si tiene un alto leverage y un residuo estandarizado grande. 
+# Estas observaciones pueden tener un impacto desproporcionado en los resultados del modelo y, por lo tanto, pueden requerir una atención especial.
+# Los valores que estan dentro de la linea gris punteada (Cook's Distance) indican que tienen un impacto sustancias en el modelo y por lo tanto se lo
+# considera un punto influyente.
+# Resumen: En este grafico no se ven puntos influyentes
+
+# (d) Aplicar los test de Durbin-Watson y Breush-Pagan.
+
+# Test Durbin-Watson o de Validacion de Independencia.
+dwtest(modelo3)
+# Interpretacion: Se usa para verificar la autocrrelacion de los residuos de un modelo de regresion.
+# El valor DW oscila entre 0 y 4. Un valor cercano a 2 indica la ausencia de autocorrelacion, un valor cercano a 0 indica autocorrelacion positiva
+# y un valor cercano a 4 indica autocorrelacion negativa. Un valor p <= 0.05 sugiere evidencia de autocorrelacion.
+# En este caso DW es cercano a 2 y el p-value = 0.94 por lo que no se evidencia autocorrelacion en los residuos del modelo.
+# Para los modelos de regresion la autocorrelacion es problematica ya que viola uno de los supuestos clave de indepencia de los residuos
 
 
-# (d) Aplicar los test de Durbin-Watson Breush-Pagan.
+# Test Breush-Pagan o de Validacion de Heterocedadisticidad.
+bptest(modelo3)
+# Interpretacion: como el p-value es 0.23 >= 0.05 no hay suficiente evidencia para rechazar la Ho de homocedasticidad.
+# Esto sugiere que no hay evidencia sustancial de heterocedasticidad en los residuos del modelo.
+
 # (e) Analice la presencia de outlier y verifique si coinciden con los puntos
 # influyentes.
 
-##sjfkhdjkfashdjkfdf
+outlierTest(modelo3)
+# Interpretacion: Rstudent indica la desviacion de la observacion en comparacion con el patron general del modelo.
+# unadjusted p-value indica la significancia estadistica de la desviacion de la observacion
+# Bonferroni p-value controla el error tipo I para realizar multiples pruebas en simultaneo.
+# En este caso la observacion 266 quedo señalada como outlier.
+
+influenceIndexPlot(modelo3, vars="Bonf", las=1,col="blue")
+# Interpretacion: Este grafico se usa para identificar obs atipicas o influentes de un modelo de regresion.
+
+plot10 <- ggplot(inmobiliaria, aes(x = distancia, y = precio)) +
+  geom_point(shape = 16, size = 3, color = "pink") +
+  geom_smooth(method = "lm", se = FALSE, color = "black")+
+  labs(x = "edad", y = "precio", title = "Dispersion Plot Edad-Precio")
+plot10
+
+# CUADRADOS MINIMOS PONDERADOS
+
+# 1.6
+estudio <- read_delim('estudio.csv',delim=";")
+estudio
+
+summary(estudio)
+
+# (a) Ajuste un modelo de regresión simple para estimar la nota final en función de las horas dedicadas al estudio.
+plot11 <- ggplot(estudio, aes(x = horas_estudio, y = puntaje)) +
+  geom_point(shape = 16, size = 3, color = "dark green") +
+  geom_smooth(method = "lm", se = FALSE, color = "black")+
+  labs(x = "Horas Estudio", y = "Puntaje", title = "Dispersion Plot Horas-Puntaje")
+plot11
+
+modelo4 <- lm(puntaje ~ horas_estudio, data=estudio)
+modelo4
 
 
-
-
+# (b) Estudie el cumplimiento de los supuestos del modelo, gráfica y analíticamente.
+# (c) Ajuste un modelo de mínimos cuadrados ponderados definiendo los pesos de 
+#     tal manera que las observaciones con menor varianza tengan más peso.
+# (d) Realice el análisis diagnóstico del segundo modelo ajustado.
+# (e) Compare ambos ajustes realizados y concluya.
