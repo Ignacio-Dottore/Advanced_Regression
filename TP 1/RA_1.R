@@ -42,12 +42,14 @@ library(cvms)
 library(tibble) 
 library(ROCR)
 library(MVN) #Para test de Henze-Zirkler
-library(chatgpt)
+#library(chatgpt)
+#Sys.setenv(OPENAI_API_KEY = "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")
 library(aod) #Para test de wald
 library(nortest) # Para test de Shapiro y demas 
 library(lmtest)
 
-Sys.setenv(OPENAI_API_KEY = "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")
+
+
 
 # Capitulo 1. REGRESION LINEAL SIMPLE
 
