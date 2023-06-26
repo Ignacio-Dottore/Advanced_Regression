@@ -48,6 +48,7 @@ library(aod) #Para test de wald
 library(nortest) # Para test de Shapiro y demas 
 library(lmtest)
 library(car)
+library(nlme)
 setwd("C:/Users/idott/Advanced_Regression/Advanced_Regression/TP 1")
 
 
@@ -626,10 +627,127 @@ plot11
 
 modelo4 <- lm(puntaje ~ horas_estudio, data=estudio)
 modelo4
-
-
 # (b) Estudie el cumplimiento de los supuestos del modelo, gráfica y analíticamente.
+
+# Supuestos de un modelo
+
+# Supuesto 1: Linealidad: Relacion lineal entre variable independiente X y la variable dependiente Y.
+
+# Prueba Grafica: Correlacion
+plot(estudio$horas_estudio,estudio$puntaje)
+
+# Prueba analitica: Correlacion
+cor(estudio$horas_estudio,estudio$puntaje)
+
+# Interpretacion: Se puede ver grafica y analiticamente que hay una relacion lineal moderada entre las variables.
+# Es decir, hay una tendencia que a mas horas de estudio mayor es el puntaje obtenido.
+
+# Supuesto 2: Independencia de los residuos: no hay correlacion entre los residuos consecutivos.
+
+# Prueba Grafica: Residuals vs Index (Orden)
+
+ggplot(data = estudio, aes(x = seq_along(modelo4$residuals), y = modelo4$residuals)) + 
+  geom_point(aes(color = modelo4$residuals)) + 
+  scale_color_gradient2(low = "blue3", mid = "grey", high = "red") + 
+  geom_line(size = 0.3) + labs(title = "Distribución de los residuos", x = "index", y = "residuo")+ 
+  geom_hline(yintercept = 0) + 
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+# Interpretacion: En el grafico no se observa un patron en los residuos 
+
+# Prueba analitica: Durbin-Watson
+dwtest(modelo4, alternative="two.sided",iterations=1000)
+
+dwt(modelo4)
+# Interpretacion: El test de Durbin-Watson, se usa para evaluar la autocorrelacion entre los residuos adyacentes de un modelo.
+# El valor DW oscila entre 0 y 4. Un valor cercano a 2 indica la ausencia de autocorrelacion, un valor cercano a 0 indica autocorrelacion positiva.
+# En este caso el valor es 1.82 cercano a dos por lo que hay baja evidencia de autocorrelacion pero tambien se tiene que considerar el p-value antes de concluir.
+# El p-value es 0.47 > 0.05 por lo que indica que no hay evidencia suficiente para rechazar la Ho de ausencia de autocorrelacion.
+# Por lo que se puede concluir que no hay autocorrelacion entre los residuos consecutivos.
+
+# Supuesto 3: Homocedasticidad de los residuos: Los residuos tienen la misma varianza para todos los valores de X.
+
+# Prueba Grafica: Scale-Location
+plot(modelo4,which=3)
+
+# Interpretacion: En el grafico no se visualiza que los puntos tengan un patron en forma de embudo, mas bien es aleatorio.
+# Por lo que puede indicar que no hay heterocedasticidad.
+
+# Otro Test Grafico: Residuals vs Fitted
+prediccion <- modelo4$fitted.values
+residuos_est  <- modelo4$residuals 
+
+ggplot(data = estudio, aes(x = prediccion, y = residuos_est )) + 
+  geom_point(aes(color = residuos_est)) + 
+  scale_color_gradient2(low = "blue3", mid = "grey", high = "red") + 
+  geom_hline(yintercept = 0) + geom_segment(aes(xend = prediccion, yend = 0), alpha = 0.2) + 
+  labs(title = "Distribución de los residuos", x = "predicción modelo", y = "residuo") + 
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+
+# Interpretacion: Se ven que los residuos estan distribuidos aleatoriamente alrededor de la linea horizontal en 0.
+# Se visualiza un punto atipico en la parte inferior derecha del grafico. Este punto podria ser un outlier o un punto influyente.
+
+# Prueba analitica: Breush-Pagan o White, Goldfeld-Quandt
+bptest(modelo4)
+# Interpretacion: El p-value es 0.028 < 0.05 por lo hay suficiente evidencia para rechazar la hipotesis nula de homocedasticidad y
+# y concluir que existe heterocedasticidad en los residuos del modelo. El p-value pequeño sugiere que hay diferencias significativas 
+# en la varianza de los errores entre dos segmentos de los datos.
+
+gqtest(modelo4)
+# Interpretacion: El p-value es 7.83e-05 < 0.05 por lo hay suficiente evidencia para rechazar la hipotesis nula de homocedasticidad y
+# y concluir que existe heterocedasticidad en los residuos del m
+# Además, la alternativa de la hipótesis indica que la varianza aumenta desde el primer segmento al segundo segmento. Esto sugiere que 
+# podría existir una relación no lineal o una interacción compleja entre la variable independiente y la variable dependiente en el modelo de regresión.
+
+# Supuesto 4: Normalidad de los residuos: Los residuos estan normalmente distribuidos distribuidos.
+
+# Prueba Grafica: Q-Q Plot
+plot(modelo4,which=2)
+
+# Interpretacion: Se ve una desciacion de la normalidad de los residuos en el comienzo y final de la grafica. 
+# Esto podria indicar que los residuos no estan normalmente distribuidos.
+
+# Otra Prueba grafica: Histograma
+ggplot(data = estudio, aes(x = residuos_est)) + geom_histogram(aes(y = ..density..)) + 
+  labs(title = "Histograma de los residuos") + theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+# Prueba analitica: Shapiro-Wilk, Anderson-Darling, Lillie
+shapiro.test(modelo4$residuals)
+# Interpretacion: El p-value es 0.012 < 0.05 por lo que hay suficiente evidencia para rechazar la Ho de normalidad y
+# Sin embargo, el resultado no es significativo y la dist de los residuos puedo no ajustarse perfectamente a una dist. normal.
+
+ad.test(modelo4$residuals)
+# Interpretacion: El p-value es 0.09 > 0.05 por lo que no hay suficiente evidencia para rechazar la Ho de normalidad y
+# y concluir que los residuos siguen una dist normal.
+
+
+lillie.test(modelo4$residuals)
+# Interpretacion: El p-value es 0.24 > 0.05 por lo que no hay suficiente evidencia para rechazar la Ho de normalidad y
+# y concluir que los residuos siguen una dist normal. 
+
+# Conclusion: Segun los resultados de las pruebas de normalidad, la dist de los resiudos no sigue una distribucion normal de manera estrica.
+
+
 # (c) Ajuste un modelo de mínimos cuadrados ponderados definiendo los pesos de 
 #     tal manera que las observaciones con menor varianza tengan más peso.
+pesos <- 1/(modelo4$fitted.values**2)
+
+
+wls_modelo4 <- gls(formula = puntaje ~ horas_estudio, data = estudio, weights = pesos)
+
 # (d) Realice el análisis diagnóstico del segundo modelo ajustado.
 # (e) Compare ambos ajustes realizados y concluya.
+
+
+
+
+
+
+
+
+
+
+
+
+
