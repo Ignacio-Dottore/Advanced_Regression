@@ -852,19 +852,57 @@ summary(robust_lm_bisquare)
 
 # 2.7
 
-us <- data(USgirl)
-us
-summary(Usgirl)
+data(USgirl, package="Brq")
+str(USgirl)
+
 # a) Graficar los pesos versus las edades. Qué se puede apreciar en este diagrama de dispersión?
+plot(USgirl, pch='.', bty="n",
+     xlim=c(0, 25),
+     ylim=c(0, 150),
+     xlab="Age (in years)",
+     ylab="Body weight (in kg)")
+
+ggplot(USgirl, aes(Age, Weight)) + 
+ geom_point(alpha=.5, size=rel(.3)) + 
+ geom_quantile(quantiles=1:9/10, 
+               formula=y ~ x)+
+ labs(x="Age (in years)", 
+      y="Body weight (in kg)") +
+ theme_minimal()  
+# Interpretacion: Se puede ver heterocedasticidad en los datos. 
+
 # b) Ajustar un modelo para la mediana y graficar.
+
+median_model <- quantreg::rq(Weight ~ Age, data = USgirl, tau = 0.5)
+
+# Graficar modelo de mediana
+plot(USgirl$Age, USgirl$Weight, xlab = "Edad", ylab = "Peso", main = "Ajuste de Modelo para la Mediana")
+abline(median_model, col = "red")
+
 # c) Ajustar un modelo para los cuartiles y graficar.
+
+# Ajustar modelo para los cuartiles
+quantile_models <- lapply(c(0.25, 0.5, 0.75), function(q) quantreg::rq(Weight ~ Age, data = USgirl, tau = q))
+
+# Graficar modelos de cuartiles
+plot(USgirl$Age, USgirl$Weight, xlab = "Edad", ylab = "Peso", main = "Ajuste de Modelo para Cuartiles")
+colors <- c("blue", "red", "green")
+legend_labels <- c("Cuartil 25", "Mediana", "Cuartil 75")
+for (i in 1:3) {
+  abline(quantile_models[[i]], col = colors[i])
+}
+legend("topright", legend = legend_labels, col = colors, lty = 1)
+
 # d) Ajustar un modelo para los deciles y graficar
 
+# Ajustar modelos para los deciles
+quantile_models <- lapply(seq(0.1, 0.9, by = 0.1), function(q) quantreg::rq(Weight ~ Age, data = USgirl, tau = q))
 
-
-
-
-
-
-
-
+# Graficar modelos de deciles
+plot(USgirl$Age, USgirl$Weight, xlab = "Edad", ylab = "Peso", main = "Ajuste de Modelo para Deciles")
+colors <- rainbow(9)
+legend_labels <- paste0("Decil ", seq(10))
+for (i in 1:9) {
+  abline(quantile_models[[i]], col = colors[i])
+}
+legend("topright", legend = legend_labels, col = colors, lty = 1)
