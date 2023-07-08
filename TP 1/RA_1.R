@@ -731,13 +731,35 @@ lillie.test(modelo4$residuals)
 
 # (c) Ajuste un modelo de mínimos cuadrados ponderados definiendo los pesos de 
 #     tal manera que las observaciones con menor varianza tengan más peso.
-pesos <- 1/(modelo4$fitted.values**2)
+pesos <- 1/lm(abs(modelo4$residuals) ~ modelo4$fitted.values)$fitted.values^2
+pesos
 
+pesos2 <- 1/(abs(modelo4$residuals))
 
-wls_modelo4 <- gls(formula = puntaje ~ horas_estudio, data = estudio, weights = pesos)
+wls_modelo4 <- lm(puntaje ~ horas_estudio, data = estudio, weights = pesos)
+summary(wls_modelo4)
+
+# Interpretacion: El p-value es extremandamente pequeño, lo que indica que es estadisticamente significativo y la variable horas_estudio 
+# esta relacionada a la variable respuesta puntaje.
 
 # (d) Realice el análisis diagnóstico del segundo modelo ajustado.
+wls_modelo4_2 <- lm(puntaje ~ horas_estudio, data = estudio, weights = pesos2)
+summary(wls_modelo4_2)
+
+
+#FALTA ANALISIS DE DIAGNOSTICO
+
+
 # (e) Compare ambos ajustes realizados y concluya.
+
+plot(estudio$horas_estudio,estudio$puntaje,xlab="Horas Estudio",ylab="Puntaje",
+     main="Horas Estudio vs Nota")
+abline(modelo4,col="red",lwd=2)
+abline(wls_modelo4,col="blue",lwd=2)
+abline(wls_modelo4_2,col="green",lwd=2)
+
+
+
 
 
 
