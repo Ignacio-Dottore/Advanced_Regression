@@ -11,6 +11,7 @@ library(sos)
 library(data.table)
 library(readr)
 library(scales)
+library(lsr)
 library(readr)
 library(corrplot)
 library(reshape2)
@@ -68,6 +69,7 @@ library(AppliedPredictiveModeling)
 library(PerformanceAnalytics)
 library(outliers)
 library(pgirmess)
+library(rstatix)
 
 setwd("C:/Users/idott/Advanced_Regression/Advanced_Regression/TP 1")
 
@@ -526,7 +528,7 @@ kruskalmc(grouped_data3$values ~ grouped_data3$ind)
 
 # Conclusion final: Los tiempos de coccion no son los mismos para los distintos grupos de alimentos.
 
-# ANOVA DE DOS VIAS CON Y SIN INTERACCION
+# ANOVA DE DOS VIAS CON Y SIN INTERACCION (ANOVA DE 2 FACTORES)
 
 # 4.5 
 
@@ -536,22 +538,207 @@ seed
 str(seed)
 summary(seed)
 
-# Se visuali3zan nulos por lo tanto se procede a transformar los datos.
+# Se visualizan nulos por lo tanto se procede a transformar los datos.
 
-quimicos <- na.aggregate(quimicos, FUN = median)
-str(quimicos)
+seed$germ <- na.aggregate(seed$germ, FUN = median)
+seed
+
+seed$cobertura <- ifelse(seed$cobertura == "yes", TRUE, FALSE)
+
+seed$cobertura <- as.logical(seed$cobertura)
+seed$cobertura
+str(seed)
+
+seed
 
 # a) Analice la proporción de germinación global.
+
+boxplot(seed[,2:4])
+boxplot
+
+ggpairs(seed)
+
+media4 <-lapply(seed,mean)
+sd4 <- lapply(seed,sd)
+
+resultados4 <- data.frame(Media = media4, Desvio = sd4)
+resultados4
+
+p1 <- ggplot(data = seed, mapping = aes(x = humedad, y = germ)) + geom_boxplot() + 
+  theme_bw() 
+p2 <- ggplot(data = seed, mapping = aes(x = cobertura, y = germ)) + geom_boxplot() + 
+  theme_bw() 
+p3 <- ggplot(data = seed, mapping = aes(x = humedad, y = germ, colour = cobertura)) + 
+  geom_boxplot() + theme_bw() 
+
+grid.arrange(p1, p2,p3, ncol = 3)
+
 # b) Estudie si hay asociación entre la humedad y la germinación.
-# c) Analice si la germinación depende de la cobertura y si hay interacción entre los dos factores.
+
+
+plot(seed$humedad, seed$germ, main = "Humedad vs Germinacion", xlab = "Humedad", ylab = "Germinacion", col = "blue", pch = 19)
+
+ggcorrplot(cor_matrix4)
+cor_matrix4 <- cor(seed)
+cor_matrix4
+# Interpretacion: Visualmente se puede ver que hay una leve asociacion negativa entre la humedad y la germinacion.
+
+correlation <- cor.test(seed$humedad, seed$germ)
+correlation
+
+# Interpretacion: El p-value del test de Pearson es 0.02 <= 0.05, se rechaza la hipotesis nula de que
+# no hay correlacion entre humedad y germinacion. Por lo tanto, se concluye que hay una leve correlacion negativa 
+# entre humedad y germinacion.
+
+# Otra forma Debora
+
+with(data = seed, expr = tapply(germ, humedad, mean))
+with(data = seed, expr = tapply(germ, humedad, sd))
+
+
+# c) Analice si la germinación depende de la cobe+rtura y si hay interacción entre los dos factores.
+
+# Forma Debora
+
+with(data = seed, expr = tapply(germ, list(cobertura, humedad), mean))
+with(data = seed, expr = tapply(germ, list(cobertura, humedad), sd))
+
+interaction.plot(trace.factor = seed$humedad, 
+                 x.factor = seed$cobertura, 
+                 response = seed$germ, 
+                 fun = "mean", 
+                 legend = TRUE, 
+                 col = 2:3, 
+                 type = "b") 
+
+interaction.plot(trace.factor = seed$cobertura, 
+                 x.factor = seed$humedad, 
+                 response = seed$germ, 
+                 fun = "mean", 
+                 legend = TRUE, 
+                 col = 2:3, 
+                 type = "b") 
+# Interpretacion: VER
+
 # d) Construya un modelo que permita explicar la relación de los dos factores con el porcentaje de germinación.
+
+anova5 <- aov(germ ~ humedad * cobertura, data = seed)
+summary(anova5)
+
+# Interpretacion: Podemos ver lo siguiente:
+
+# Humerdad: El factor humedad tiene un efecto significativo en la proporcion de germinacion (p-value = 0.0196)
+# Esto indica que el nive de humedad del suelo afecta a la germinacion de las semillas.
+
+# Cobertura: El factor conertura no tiene un efecto significativo en la proporcion de germinacion (p-value = 0.9823)
+# La presencia o ausencia de cobertura no afecta la germinacion de las semillas.
+
+# Interaccion entre humedad y cobertura: Existe una interaccion significativa entre la cobertura y la humedad (p-value = 0.048)
+# Esto significa que el efecto de la humedad en la germinacion depende de la cobertura del cultivo y viceversa.
+# Lo que implica que el efecto de un factor puede depender del nivel del otro factor.
+
 # e) Utilice los efectos y las comparaciones a posteriori para realizar una recomendación.
 
+etaSquared(anova5)
+
+par(mfrow = c(2,2)) 
+plot(anova5)
+
+# Interpretacion: 
+# Para el factor de humedad, etaSquared es de aproximadamente 0.109, lo que indica que el factor de 
+# humedad explica aproximadamente el 10.9% de la variabilidad total en la proporción de germinación de 
+#as semillas.
+
+# Para el factor de cobertura, etaSquared es extremadamente bajo, alrededor de 9.21e-06. 
+# Esto sugiere que el factor de cobertura explica una proporción muy pequeña de la variabilidad total en la 
+# germinación de las semillas, prácticamente despreciable.
+
+# Para la interacción entre humedad y cobertura, etaSquared es de aproximadamente 0.077, lo que indica 
+# que la interacción entre estos dos factores explica aproximadamente el 7.7% de la variabilidad total en
+# la germinación de las semillas.
+
+# Otros metodos a posteriori 
+
+library(emmeans)
+posthoc <- emmeans(modelo, ~ humedad * cobertura)
+print(posthoc)
+
 # 4.6
+ef <- read.csv("eficacia.csv",sep=",")
+ef
+
+str(ef)
+summary(ef[,3:5])
 
 # (a) Explorar visualmente las medias por las distintas combinaciones de los factores considerados.
+
+ggpairs(ef[,3:5])
+
+means <- aggregate(score_eficacia ~ sexo + edad, data = ef, FUN = mean)
+print(means)
+
+
+ggplot(ef, aes(x = sexo, y = score_eficacia, color = edad, shape = edad)) +
+  geom_point(position = position_dodge(width = 0.5)) +
+  labs(x = "Sexo", y = "Score de eficacia", color = "Edad", shape = "Edad") +
+  theme_bw()
+
+p1 <- ggplot(data = ef, mapping = aes(x = sexo, y = score_eficacia)) + geom_boxplot() + 
+  theme_bw() 
+p2 <- ggplot(data = ef, mapping = aes(x = edad, y = score_eficacia)) + geom_boxplot() + 
+  theme_bw() 
+p3 <- ggplot(data = ef, mapping = aes(x = sexo, y = score_eficacia, colour = edad)) + 
+  geom_boxplot() + theme_bw() 
+
+grid.arrange(p1, p2, ncol = 2)
+p3
+
 # (b) Valorar visualmente la presencia de interacción.
+
+# Metodo Debora
+
+interaction.plot(trace.factor = ef$edad, 
+                 x.factor = ef$sexo, 
+                 response = ef$score_eficacia, 
+                 fun = "mean", 
+                 legend = TRUE, 
+                 col = 2:3, 
+                 type = "b") 
+interaction.plot(trace.factor = ef$sexo, 
+                 x.factor = ef$edad, 
+                 response = ef$score_eficacia, 
+                 fun = "mean", 
+                 legend = TRUE, 
+                 col = 2:3, 
+                 type = "b") 
+
+# Interpretacion: En el interaction.plot si las lineas son paralelas quiere decir que no hay interaccion y 
+# si se cruzan quiere decir que si hay interaccion.
+
+# Metodo ChatGPT
+ggplot(ef, aes(x = sexo, y = score_eficacia, color = edad, shape = edad, group = sexo)) +
+  geom_line() +
+  labs(x = "Sexo", y = "Score de eficacia", color = "Edad", shape = "Edad") +
+  theme_bw()
+
 # (c) Construir un modelo y estimar los coeficientes del mismo. Interpretar los coeficientes y el efecto.
 
+anova6 <- aov(score_eficacia ~ sexo * edad, data = ef)
+summary(anova6)
 
+# Interpreatcion: Podemos ver lo siguiente:
+# Sexo: Basandonos en el p-value, no hay evidencia suficiente para determinar que el sexo tiene un efecto significativo en la eficacia (p-value = 0.09)
+# Edad: El factor edad tiene un efecto levemente significativo en la eficacia (p-value = 0.04)
+# Interaccion entre Sexo y Edad: Existe una interaccion significativa entre el sexo y la edad 
+# (p-value = 0.0008). Esto significa que el efecto de la edad en la eficacia depende del sexo y viceversa.
 
+etaSquared(anova6)
+
+# eta.sq para sexo es 0.04204429, lo que indica que el factor sexo explica aproximadamente 
+# el 4.20% de la variabilidad total en el puntaje de eficacia.
+
+# eta.sq para edad es 0.09622290, lo que indica que el factor edad explica aproximadamente 
+# el 9.62% de la variabilidad total en el puntaje de eficacia.
+
+# eta.sq para sexo:edad es 0.29667816, lo que indica que la interacción entre sexo y
+#edad explica aproximadamente el 29.67% de la variabilidad total en el puntaje de eficacia.
